@@ -1,11 +1,27 @@
 {
   "name": "schoolter",
-  "version": "1.0.0",
-  "description": "View, search and analyze all London schools",
+  "version": "2.0.0",
+  "description": "London Schools Explorer — SaaS platform",
   "scripts": {
-    "dev": "npx serve .",
-    "start": "npx serve ."
+    "dev": "node server/index.js",
+    "start": "NODE_ENV=production node server/index.js",
+    "db:init": "node server/db/init.js"
   },
-  "keywords": ["london", "schools", "education", "analysis"],
-  "license": "MIT"
+  "keywords": ["london", "schools", "education", "saas"],
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.0.0",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "csurf": "^1.11.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "stripe": "^17.0.0",
+    "uuid": "^10.0.0",
+    "validator": "^13.12.0"
+  }
 }

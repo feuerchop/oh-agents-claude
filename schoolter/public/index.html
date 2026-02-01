@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schoolter — London Schools Explorer</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top nav (visible when logged in) -->
+    <nav id="topNav" class="top-nav hidden">
+      <div class="nav-inner">
+        <a href="/" class="nav-logo" data-link>Schoolter</a>
+        <div class="nav-links">
+          <a href="/dashboard" data-link>Dashboard</a>
+          <a href="/schools" data-link>Schools</a>
+          <a href="/billing" data-link>Billing</a>
+          <span id="navUserMenu" class="nav-user">
+            <button id="userMenuBtn" class="nav-user-btn">
+              <span id="navUserName"></span>
+              <svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 5l3 3 3-3" stroke="currentColor" fill="none" stroke-width="1.5"/></svg>
+            </button>
+            <div id="userDropdown" class="dropdown hidden">
+              <a href="/profile" data-link>Profile &amp; Settings</a>
+              <a href="/admin" data-link id="adminLink" class="hidden">Admin Panel</a>
+              <hr>
+              <a href="#" id="logoutBtn">Sign Out</a>
+            </div>
+          </span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Page content injected here -->
+    <main id="pageContent"></main>
+
+    <footer id="appFooter" class="footer">
+      <div class="container">
+        <p>Schoolter &mdash; London Schools Explorer SaaS</p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Modal for school details -->
+  <div id="schoolModal" class="modal" role="dialog" aria-hidden="true">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="/data/schools.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/router.js"></script>
+  <script src="/js/pages/auth.js"></script>
+  <script src="/js/pages/dashboard.js"></script>
+  <script src="/js/pages/schools.js"></script>
+  <script src="/js/pages/billing.js"></script>
+  <script src="/js/pages/profile.js"></script>
+  <script src="/js/pages/admin.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
