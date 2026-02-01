@@ -8,7 +8,7 @@
   // ── Routes ───────────────────────────────────────────────
   Router.add("/", () => {
     if (API.isLoggedIn()) Router.navigate("/dashboard", true);
-    else Router.navigate("/login", true);
+    else Router.navigate("/schools", true);
   });
 
   Router.add("/login", AuthPages.loginPage, { guest: true });
@@ -17,7 +17,7 @@
   Router.add("/reset-password", AuthPages.resetPasswordPage, { guest: true });
 
   Router.add("/dashboard", DashboardPage.render, { auth: true });
-  Router.add("/schools", SchoolsPage.render, { auth: true });
+  Router.add("/schools", SchoolsPage.render);
   Router.add("/billing", BillingPage.render, { auth: true });
   Router.add("/profile", ProfilePage.render, { auth: true });
   Router.add("/admin", AdminPage.render, { auth: true, admin: true });
@@ -27,14 +27,15 @@
     const nav = document.getElementById("topNav");
     const adminLink = document.getElementById("adminLink");
 
+    nav.classList.remove("hidden");
     if (API.isLoggedIn()) {
-      nav.classList.remove("hidden");
       const user = API.getUser();
       document.getElementById("navUserName").textContent = user?.name || user?.email || "Account";
+      document.getElementById("navUserMenu").classList.remove("hidden");
       if (API.isAdmin()) adminLink.classList.remove("hidden");
       else adminLink.classList.add("hidden");
     } else {
-      nav.classList.add("hidden");
+      document.getElementById("navUserMenu").classList.add("hidden");
     }
   }
 
