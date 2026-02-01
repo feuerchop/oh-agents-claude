@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    // SPA redirect for GitHub Pages: store original path and redirect to base
+    var base = location.pathname.split('/').slice(0, 2).join('/') + '/';
+    sessionStorage.setItem('spa-redirect', location.pathname + location.search + location.hash);
+    location.replace(base);
+  </script>
+</head>
+<body></body>
+</html>
