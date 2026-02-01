@@ -1,0 +1,11 @@
+{
+  "name": "schoolter",
+  "version": "1.0.0",
+  "description": "View, search and analyze all London schools",
+  "scripts": {
+    "dev": "npx serve .",
+    "start": "npx serve ."
+  },
+  "keywords": ["london", "schools", "education", "analysis"],
+  "license": "MIT"
+}
