@@ -25,6 +25,7 @@ const SchoolsPage = (() => {
             <div class="filter-group"><label for="filterOfsted">Ofsted</label><select id="filterOfsted"><option value="">All ratings</option></select></div>
             <div class="filter-group"><label for="filterReligion">Faith</label><select id="filterReligion"><option value="">All</option></select></div>
             <div class="filter-group"><label for="filterFunding">Funding</label><select id="filterFunding"><option value="">All types</option></select></div>
+            <div class="filter-group"><label for="filterSector">Sector</label><select id="filterSector"><option value="">All sectors</option><option value="State">State</option><option value="Private">Private</option></select></div>
             <div class="filter-group"><label for="filterSixthForm">Sixth Form</label>
               <select id="filterSixthForm"><option value="">All</option><option value="yes">Has sixth form</option><option value="no">No sixth form</option></select>
             </div>
@@ -69,7 +70,7 @@ const SchoolsPage = (() => {
   function populateFilters() {
     const fields = {
       filterBorough: "borough", filterPhase: "phase", filterGender: "gender",
-      filterOfsted: "ofstedRating", filterReligion: "religiousCharacter", filterFunding: "fundingType",
+      filterOfsted: "ofstedRating", filterReligion: "religiousCharacter", filterFunding: "fundingType", filterSector: "sector",
     };
     for (const [id, key] of Object.entries(fields)) {
       const sel = document.getElementById(id);
@@ -107,6 +108,7 @@ const SchoolsPage = (() => {
       ofsted: document.getElementById("filterOfsted").value,
       religion: document.getElementById("filterReligion").value,
       funding: document.getElementById("filterFunding").value,
+      sector: document.getElementById("filterSector").value,
       sixth: document.getElementById("filterSixthForm").value,
     };
     const sort = document.getElementById("sortBy").value;
@@ -119,8 +121,9 @@ const SchoolsPage = (() => {
       if (f.ofsted && s.ofstedRating !== f.ofsted) return false;
       if (f.religion && s.religiousCharacter !== f.religion) return false;
       if (f.funding && s.fundingType !== f.funding) return false;
-      if (f.sixth === "yes" && !s.hassixthForm) return false;
-      if (f.sixth === "no" && s.hassixthForm) return false;
+      if (f.sector && s.sector !== f.sector) return false;
+      if (f.sixth === "yes" && !s.hasSixthForm) return false;
+      if (f.sixth === "no" && s.hasSixthForm) return false;
       return true;
     });
 
@@ -148,7 +151,7 @@ const SchoolsPage = (() => {
     c.innerHTML = page.map(s=>`
       <div class="school-card" data-id="${s.id}">
         <div class="card-header"><span class="school-name">${esc(s.name)}</span><span class="ofsted-badge ofsted-${s.ofstedRating.toLowerCase().replace(/\s+/g,"-")}">${esc(s.ofstedRating)}</span></div>
-        <div class="card-meta"><span class="badge">${esc(s.phase)}</span><span class="badge">${esc(s.gender)}</span>${s.religiousCharacter!=="None"?`<span class="badge">${esc(s.religiousCharacter)}</span>`:""}<span class="badge">${esc(s.fundingType)}</span></div>
+        <div class="card-meta"><span class="badge badge-${(s.sector||'State').toLowerCase()}">${esc(s.sector||'State')}</span><span class="badge ${s.phase==='Nursery'?'badge-nursery':''}">${esc(s.phase)}</span><span class="badge">${esc(s.gender)}</span>${s.religiousCharacter!=="None"?`<span class="badge">${esc(s.religiousCharacter)}</span>`:""}<span class="badge">${esc(s.fundingType)}</span></div>
         <div class="card-details"><span>${esc(s.borough)} &middot; ${esc(s.postcode)}</span><span>${s.pupils.toLocaleString()} pupils &middot; Ages ${esc(s.ageRange)}</span></div>
       </div>`).join("");
     c.querySelectorAll(".school-card").forEach(card => card.addEventListener("click", ()=> openSchoolModal(Number(card.dataset.id))));
@@ -172,6 +175,7 @@ const SchoolsPage = (() => {
     document.getElementById("modalBody").innerHTML=`
       <div class="detail-header"><h2>${esc(s.name)}</h2><div class="detail-borough">${esc(s.borough)}</div></div>
       <div class="detail-grid">
+        <div class="detail-item"><label>Sector</label><span class="badge badge-${(s.sector||'State').toLowerCase()}">${esc(s.sector||'State')}</span></div>
         <div class="detail-item"><label>Phase</label><span>${esc(s.phase)}</span></div>
         <div class="detail-item"><label>Type</label><span>${esc(s.type)}</span></div>
         <div class="detail-item"><label>Gender</label><span>${esc(s.gender)}</span></div>
@@ -180,8 +184,9 @@ const SchoolsPage = (() => {
         <div class="detail-item"><label>Ofsted</label><span class="ofsted-badge ofsted-${s.ofstedRating.toLowerCase().replace(/\s+/g,"-")}">${esc(s.ofstedRating)}</span></div>
         <div class="detail-item"><label>Faith</label><span>${esc(s.religiousCharacter)}</span></div>
         <div class="detail-item"><label>Funding</label><span>${esc(s.fundingType)}</span></div>
-        <div class="detail-item"><label>Sixth Form</label><span>${s.hassixthForm?"Yes":"No"}</span></div>
+        <div class="detail-item"><label>Sixth Form</label><span>${s.hasSixthForm?"Yes":"No"}</span></div>
         <div class="detail-item"><label>Postcode</label><span>${esc(s.postcode)}</span></div>
+        ${s.website?`<div class="detail-item" style="grid-column:1/-1"><label>Website</label><a href="${esc(s.website)}" target="_blank" rel="noopener">${esc(s.website)}</a></div>`:""}
         <div class="detail-item" style="grid-column:1/-1"><label>Address</label><span>${esc(s.address)}</span></div>
       </div>`;
     const m = document.getElementById("schoolModal");
@@ -203,6 +208,7 @@ const SchoolsPage = (() => {
         <div class="analytics-card"><h3>Ofsted Ratings</h3><div id="chartOfsted" class="bar-chart"></div></div>
         <div class="analytics-card"><h3>Gender Distribution</h3><div id="chartGender" class="pie-chart-container"></div></div>
         <div class="analytics-card"><h3>Funding Types</h3><div id="chartFunding" class="bar-chart"></div></div>
+        <div class="analytics-card"><h3>Sector Split</h3><div id="chartSector" class="pie-chart-container"></div></div>
         <div class="analytics-card"><h3>Key Statistics</h3><div id="statsPanel" class="stats-panel"></div></div>
       </div>`;
     renderBarChart("chartBorough", countBy(filteredSchools,"borough"), COLORS[0]);
@@ -210,6 +216,7 @@ const SchoolsPage = (() => {
     renderBarChart("chartOfsted", countBy(filteredSchools,"ofstedRating"), COLORS[1]);
     renderDonut("chartGender", countBy(filteredSchools,"gender"));
     renderBarChart("chartFunding", countBy(filteredSchools,"fundingType"), COLORS[4]);
+    renderDonut("chartSector", countBy(filteredSchools,"sector"));
     renderStats();
   }
 
@@ -231,7 +238,7 @@ const SchoolsPage = (() => {
 
   function renderStats(){
     const d=filteredSchools,el=document.getElementById("statsPanel");
-    const tp=d.reduce((s,x)=>s+x.pupils,0),avg=d.length?Math.round(tp/d.length):0,bor=new Set(d.map(s=>s.borough)).size,ws=d.filter(s=>s.hassixthForm).length,os=d.filter(s=>s.ofstedRating==="Outstanding").length;
+    const tp=d.reduce((s,x)=>s+x.pupils,0),avg=d.length?Math.round(tp/d.length):0,bor=new Set(d.map(s=>s.borough)).size,ws=d.filter(s=>s.hasSixthForm).length,os=d.filter(s=>s.ofstedRating==="Outstanding").length;
     el.innerHTML=`<div class="stat-item"><div class="stat-value">${d.length}</div><div class="stat-label">Schools</div></div><div class="stat-item"><div class="stat-value">${tp.toLocaleString()}</div><div class="stat-label">Pupils</div></div><div class="stat-item"><div class="stat-value">${avg.toLocaleString()}</div><div class="stat-label">Avg Pupils</div></div><div class="stat-item"><div class="stat-value">${bor}</div><div class="stat-label">Boroughs</div></div><div class="stat-item"><div class="stat-value">${ws}</div><div class="stat-label">Sixth Form</div></div><div class="stat-item"><div class="stat-value">${os}</div><div class="stat-label">Outstanding</div></div>`;
   }
 
@@ -261,7 +268,7 @@ const SchoolsPage = (() => {
     if(!id1||!id2){c.innerHTML='<p class="text-muted">Select two schools to compare.</p>';return;}
     const s1=LONDON_SCHOOLS.find(s=>s.id===id1), s2=LONDON_SCHOOLS.find(s=>s.id===id2);
     if(!s1||!s2) return;
-    const rows=[["Borough",s1.borough,s2.borough],["Phase",s1.phase,s2.phase],["Gender",s1.gender,s2.gender],["Age Range",s1.ageRange,s2.ageRange],["Pupils",s1.pupils.toLocaleString(),s2.pupils.toLocaleString()],["Ofsted",s1.ofstedRating,s2.ofstedRating],["Faith",s1.religiousCharacter,s2.religiousCharacter],["Funding",s1.fundingType,s2.fundingType],["Sixth Form",s1.hassixthForm?"Yes":"No",s2.hassixthForm?"Yes":"No"],["Address",s1.address,s2.address]];
+    const rows=[["Sector",s1.sector||"State",s2.sector||"State"],["Borough",s1.borough,s2.borough],["Phase",s1.phase,s2.phase],["Gender",s1.gender,s2.gender],["Age Range",s1.ageRange,s2.ageRange],["Pupils",s1.pupils.toLocaleString(),s2.pupils.toLocaleString()],["Ofsted",s1.ofstedRating,s2.ofstedRating],["Faith",s1.religiousCharacter,s2.religiousCharacter],["Funding",s1.fundingType,s2.fundingType],["Sixth Form",s1.hasSixthForm?"Yes":"No",s2.hasSixthForm?"Yes":"No"],["Website",s1.website||"—",s2.website||"—"],["Address",s1.address,s2.address]];
     c.innerHTML=`<table><thead><tr><th></th><td><strong>${esc(s1.name)}</strong></td><td><strong>${esc(s2.name)}</strong></td></tr></thead><tbody>${rows.map(([l,v1,v2])=>{const d=v1!==v2;return`<tr><th>${l}</th><td${d?' class="highlight"':""}>${esc(String(v1))}</td><td${d?' class="highlight"':""}>${esc(String(v2))}</td></tr>`;}).join("")}</tbody></table>`;
   }
 
