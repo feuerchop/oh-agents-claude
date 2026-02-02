@@ -84,4 +84,7 @@
 
   updateNav();
   Router.resolve();
+
+  // ── Chat assistant ─────────────────────────────────────
+  if (typeof SchoolChat !== "undefined") SchoolChat.init();
 })();
