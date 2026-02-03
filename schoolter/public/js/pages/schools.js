@@ -6,19 +6,65 @@ const SchoolsPage = (() => {
   const PAGE_SIZE = 24;
   let currentPage = 1;
   let filteredSchools = [];
+  let regionFilter = "all"; // "all", "london", "kent"
   const COLORS = ["#4f46e5","#059669","#d97706","#dc2626","#7c3aed","#0891b2","#be185d","#65a30d","#c026d3","#ea580c","#0d9488","#4338ca"];
 
+  const KENT_DISTRICTS = ["Kent", "Canterbury", "Maidstone", "Ashford", "Dover", "Folkestone and Hythe", "Thanet", "Swale", "Dartford", "Gravesham", "Sevenoaks", "Tonbridge and Malling", "Tunbridge Wells", "Medway"];
+
+  function isKentSchool(school) {
+    return school.region === "Kent" || KENT_DISTRICTS.some(d => (school.borough || "").toLowerCase().includes(d.toLowerCase()));
+  }
+
+  function getRegionCounts() {
+    let london = 0, kent = 0;
+    LONDON_SCHOOLS.forEach(s => {
+      if (isKentSchool(s)) kent++;
+      else london++;
+    });
+    return { london, kent, total: london + kent };
+  }
+
   function render() {
+    const counts = getRegionCounts();
     const el = document.getElementById("pageContent");
     el.innerHTML = `
       <div class="page-container schools-page">
+        <!-- Hero Section -->
+        <section class="hero-section">
+          <div class="hero-content">
+            <h1 class="hero-title">Explore Schools in<br>Greater London & Kent</h1>
+            <p class="hero-subtitle">Discover and compare ${counts.total} schools across Greater London and Kent. Access Ofsted ratings, exam results, admissions data, and more.</p>
+            <div class="hero-stats">
+              <div class="hero-stat"><div class="hero-stat-value">${counts.total}</div><div class="hero-stat-label">Total Schools</div></div>
+              <div class="hero-stat"><div class="hero-stat-value">${counts.london}</div><div class="hero-stat-label">London</div></div>
+              <div class="hero-stat"><div class="hero-stat-value">${counts.kent}</div><div class="hero-stat-label">Kent</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Region Filter Chips -->
+        <div class="region-filters">
+          <button class="region-chip active" data-region="all">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            All Regions <span class="chip-count">${counts.total}</span>
+          </button>
+          <button class="region-chip" data-region="london">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
+            Greater London <span class="chip-count">${counts.london}</span>
+          </button>
+          <button class="region-chip" data-region="kent">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
+            Kent <span class="chip-count">${counts.kent}</span>
+          </button>
+        </div>
+
         <section class="search-section-inline">
           <div class="search-bar">
             <input type="text" id="searchInput" placeholder="Search schools by name, borough, or postcode..." autocomplete="off">
             <button id="clearSearch" class="btn-clear" title="Clear search" aria-label="Clear search">&times;</button>
           </div>
           <div class="filters">
-            <div class="filter-group"><label for="filterBorough">Borough</label><select id="filterBorough"><option value="">All boroughs</option></select></div>
+            <div class="filter-group"><label for="filterBorough">Borough/District</label><select id="filterBorough"><option value="">All areas</option></select></div>
             <div class="filter-group"><label for="filterPhase">Phase</label><select id="filterPhase"><option value="">All phases</option></select></div>
             <div class="filter-group"><label for="filterGender">Gender</label><select id="filterGender"><option value="">All</option></select></div>
             <div class="filter-group"><label for="filterOfsted">Ofsted</label><select id="filterOfsted"><option value="">All ratings</option></select></div>
@@ -96,6 +142,17 @@ const SchoolsPage = (() => {
     cb.addEventListener("click", () => { si.value = ""; cb.classList.remove("visible"); currentPage = 1; applyFilters(); });
     document.querySelectorAll(".schools-page .filters select").forEach(s => s.addEventListener("change", () => { currentPage = 1; applyFilters(); }));
 
+    // Region filter chips
+    document.querySelectorAll(".region-chip").forEach(chip => {
+      chip.addEventListener("click", () => {
+        document.querySelectorAll(".region-chip").forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        regionFilter = chip.dataset.region;
+        currentPage = 1;
+        applyFilters();
+      });
+    });
+
     document.querySelectorAll(".schools-page .tab").forEach(tab => {
       tab.addEventListener("click", () => {
         document.querySelectorAll(".schools-page .tab").forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected","false"); });
@@ -129,6 +186,9 @@ const SchoolsPage = (() => {
     const sort = document.getElementById("sortBy").value;
 
     filteredSchools = LONDON_SCHOOLS.filter(s => {
+      // Region filter
+      if (regionFilter === "london" && isKentSchool(s)) return false;
+      if (regionFilter === "kent" && !isKentSchool(s)) return false;
       if (q && !s.name.toLowerCase().includes(q) && !s.borough.toLowerCase().includes(q) && !(s.postcode||"").toLowerCase().includes(q)) return false;
       if (f.borough && s.borough !== f.borough) return false;
       if (f.phase && s.phase !== f.phase) return false;
@@ -168,6 +228,18 @@ const SchoolsPage = (() => {
   }
 
   // ── List View ─────────────────────────────────────────
+  function getPhaseIcon(phase) {
+    const icons = {
+      Primary: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9l8-5 8 5v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M9 19v-6h6v6"/></svg>`,
+      Secondary: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>`,
+      Nursery: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M3 21v-2a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v2"/></svg>`,
+      Special: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`,
+      "All-Through": `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 8v8M8 12h8"/></svg>`,
+      default: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`
+    };
+    return icons[phase] || icons.default;
+  }
+
   function renderList() {
     const c = document.getElementById("schoolList");
     const start = (currentPage-1)*PAGE_SIZE;
@@ -178,18 +250,23 @@ const SchoolsPage = (() => {
       const a8 = getA8(s);
       const ks2 = getKS2(s);
       const oversubscribed = s.admissions?.oversubscribed;
+      const isKent = isKentSchool(s);
+      const phaseClass = s.phase.toLowerCase().replace(/[^a-z]/g, "-") + "-phase";
       return `
-      <div class="school-card" data-id="${s.id}">
+      <div class="school-card hover-lift" data-id="${s.id}">
+        <div class="school-card-image">
+          <span class="region-badge ${isKent ? 'kent' : 'london'}">${isKent ? 'Kent' : 'London'}</span>
+          <span class="sector-indicator ${(s.sector||'state').toLowerCase()}">${esc(s.sector||'State')}</span>
+          <div class="school-card-icon ${phaseClass}">${getPhaseIcon(s.phase)}</div>
+        </div>
         <div class="card-header">
           <span class="school-name">${esc(s.name)}</span>
           <span class="ofsted-badge ofsted-${rating.toLowerCase().replace(/\s+/g,"-")}">${esc(rating)}</span>
         </div>
         <div class="card-meta">
-          <span class="badge badge-${(s.sector||'State').toLowerCase()}">${esc(s.sector||'State')}</span>
           <span class="badge ${s.phase==='Nursery'?'badge-nursery':''}">${esc(s.phase)}</span>
           <span class="badge">${esc(s.gender)}</span>
           ${s.religiousCharacter!=="None"?`<span class="badge">${esc(s.religiousCharacter)}</span>`:""}
-          <span class="badge">${esc(s.fundingType)}</span>
           ${oversubscribed?`<span class="admissions-indicator oversubscribed">Oversubscribed</span>`:""}
         </div>
         <div class="card-details">
