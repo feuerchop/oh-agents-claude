@@ -482,15 +482,39 @@ const SchoolsPage = (() => {
     if (!s.performance) return '<p class="text-muted">No performance data available.</p>';
     const p = s.performance;
     let html = '';
+
+    // KS2 Results
     if (p.ks2) {
       html += `<h4 style="margin:0 0 12px;font-size:.85rem;font-weight:700;color:var(--gray-600)">KS2 SATs Results ${p.ks2.year?`(${p.ks2.year})`:""}</h4>`;
       const items = [["Reading", p.ks2.readingExpected], ["Maths", p.ks2.mathsExpected],
-        ["Writing", p.ks2.writingExpected], ["Combined", p.ks2.combinedExpected]].filter(([,v]) => v != null);
+        ["Writing", p.ks2.writingExpected], ["GPS", p.ks2.gpsExpected], ["Combined", p.ks2.combinedExpected]].filter(([,v]) => v != null);
       html += items.map(([label, val]) => `<div class="progress-bar-wrap">
         <div class="progress-label"><span>${label} (expected standard)</span><span>${val}%</span></div>
         <div class="progress-track"><div class="progress-fill ${val>=70?'green':val>=55?'blue':'orange'}" style="width:${val}%"></div></div>
       </div>`).join("");
+
+      // KS2 Progress scores
+      if (p.ks2.readingProgress != null || p.ks2.mathsProgress != null) {
+        html += `<h5 style="margin:16px 0 8px;font-size:.8rem;font-weight:600;color:var(--gray-500)">Progress Scores</h5>
+        <div class="metric-grid" style="grid-template-columns:1fr 1fr 1fr;">
+          ${p.ks2.readingProgress!=null?`<div class="metric-card"><div class="metric-value ${p.ks2.readingProgress>0?'good':p.ks2.readingProgress>-1?'avg':'low'}">${p.ks2.readingProgress>0?"+":""}${p.ks2.readingProgress}</div><div class="metric-label">Reading</div></div>`:""}
+          ${p.ks2.mathsProgress!=null?`<div class="metric-card"><div class="metric-value ${p.ks2.mathsProgress>0?'good':p.ks2.mathsProgress>-1?'avg':'low'}">${p.ks2.mathsProgress>0?"+":""}${p.ks2.mathsProgress}</div><div class="metric-label">Maths</div></div>`:""}
+          ${p.ks2.writingProgress!=null?`<div class="metric-card"><div class="metric-value ${p.ks2.writingProgress>0?'good':p.ks2.writingProgress>-1?'avg':'low'}">${p.ks2.writingProgress>0?"+":""}${p.ks2.writingProgress}</div><div class="metric-label">Writing</div></div>`:""}
+        </div>`;
+      }
+
+      // KS2 Higher attaining
+      if (p.ks2.readingHigher != null || p.ks2.mathsHigher != null) {
+        html += `<h5 style="margin:16px 0 8px;font-size:.8rem;font-weight:600;color:var(--gray-500)">Greater Depth (%)</h5>
+        <div class="metric-grid" style="grid-template-columns:1fr 1fr 1fr;">
+          ${p.ks2.readingHigher!=null?`<div class="metric-card"><div class="metric-value">${p.ks2.readingHigher}%</div><div class="metric-label">Reading</div></div>`:""}
+          ${p.ks2.mathsHigher!=null?`<div class="metric-card"><div class="metric-value">${p.ks2.mathsHigher}%</div><div class="metric-label">Maths</div></div>`:""}
+          ${p.ks2.writingHigher!=null?`<div class="metric-card"><div class="metric-value">${p.ks2.writingHigher}%</div><div class="metric-label">Writing</div></div>`:""}
+        </div>`;
+      }
     }
+
+    // KS4/GCSE Results
     if (p.ks4) {
       html += `<h4 style="margin:24px 0 12px;font-size:.85rem;font-weight:700;color:var(--gray-600)">GCSE Results ${p.ks4.year?`(${p.ks4.year})`:""}</h4>
       <div class="metric-grid">
@@ -500,14 +524,63 @@ const SchoolsPage = (() => {
         ${p.ks4.ebacc_entry!=null?`<div class="metric-card"><div class="metric-value">${p.ks4.ebacc_entry}%</div><div class="metric-label">EBacc Entry</div></div>`:""}
         ${p.ks4.ebacc_avg!=null?`<div class="metric-card"><div class="metric-value">${p.ks4.ebacc_avg}</div><div class="metric-label">EBacc APS</div></div>`:""}
       </div>`;
+
+      // GCSE Subject breakdown
+      if (p.ks4.subjects) {
+        const subjectLabels = {
+          english: "English", maths: "Maths", science: "Science", history: "History",
+          geography: "Geography", modernLanguages: "Modern Languages", art: "Art",
+          music: "Music", pe: "PE", computing: "Computing", drama: "Drama", dt: "D&T"
+        };
+        html += `<h5 style="margin:16px 0 8px;font-size:.8rem;font-weight:600;color:var(--gray-500)">Subject Results (% Grade 5+)</h5>`;
+        const subjects = Object.entries(p.ks4.subjects).sort((a,b) => b[1]-a[1]);
+        html += subjects.map(([k,v]) => `<div class="progress-bar-wrap">
+          <div class="progress-label"><span>${subjectLabels[k] || k}</span><span>${v}%</span></div>
+          <div class="progress-track"><div class="progress-fill ${v>=60?'green':v>=45?'blue':'orange'}" style="width:${v}%"></div></div>
+        </div>`).join("");
+      }
     }
+
+    // KS5/A-Level Results
     if (p.ks5) {
       html += `<h4 style="margin:24px 0 12px;font-size:.85rem;font-weight:700;color:var(--gray-600)">A-Level Results ${p.ks5.year?`(${p.ks5.year})`:""}</h4>
       <div class="metric-grid" style="grid-template-columns:1fr 1fr;">
         ${p.ks5.averagePointScore!=null?`<div class="metric-card"><div class="metric-value">${p.ks5.averagePointScore}</div><div class="metric-label">Average Point Score</div></div>`:""}
         ${p.ks5.aabOrHigher!=null?`<div class="metric-card"><div class="metric-value">${p.ks5.aabOrHigher}%</div><div class="metric-label">AAB or higher</div></div>`:""}
       </div>`;
+
+      // A-Level Subject breakdown
+      if (p.ks5.subjects) {
+        const gradeMap = {6: "A*", 5: "A", 4: "B", 3: "C", 2: "D", 1: "E"};
+        const getGrade = (n) => { const r = Math.round(n); return gradeMap[r] || (n >= 5.5 ? "A*" : n >= 4.5 ? "A" : n >= 3.5 ? "B" : n >= 2.5 ? "C" : "D"); };
+        const subjectLabels = {
+          maths: "Maths", furtherMaths: "Further Maths", english: "English",
+          physics: "Physics", chemistry: "Chemistry", biology: "Biology",
+          history: "History", geography: "Geography", economics: "Economics",
+          psychology: "Psychology", art: "Art", modernLanguages: "Languages", computerScience: "Computer Sci"
+        };
+        html += `<h5 style="margin:16px 0 8px;font-size:.8rem;font-weight:600;color:var(--gray-500)">Subject Average Grades</h5>`;
+        const subjects = Object.entries(p.ks5.subjects).sort((a,b) => b[1]-a[1]);
+        html += subjects.map(([k,v]) => `<div class="progress-bar-wrap">
+          <div class="progress-label"><span>${subjectLabels[k] || k}</span><span>${getGrade(v)} (${v})</span></div>
+          <div class="progress-track"><div class="progress-fill ${v>=5?'green':v>=4?'blue':'orange'}" style="width:${(v/6)*100}%"></div></div>
+        </div>`).join("");
+      }
+
+      // Destinations
+      if (p.ks5.destinations) {
+        const d = p.ks5.destinations;
+        html += `<h5 style="margin:16px 0 8px;font-size:.8rem;font-weight:600;color:var(--gray-500)">Student Destinations</h5>
+        <div class="metric-grid" style="grid-template-columns:repeat(5,1fr);">
+          ${d.university!=null?`<div class="metric-card"><div class="metric-value">${d.university}%</div><div class="metric-label">University</div></div>`:""}
+          ${d.russellGroup!=null?`<div class="metric-card"><div class="metric-value">${d.russellGroup}%</div><div class="metric-label">Russell Group</div></div>`:""}
+          ${d.oxbridge!=null?`<div class="metric-card"><div class="metric-value">${d.oxbridge}%</div><div class="metric-label">Oxbridge</div></div>`:""}
+          ${d.apprenticeship!=null?`<div class="metric-card"><div class="metric-value">${d.apprenticeship}%</div><div class="metric-label">Apprenticeship</div></div>`:""}
+          ${d.employment!=null?`<div class="metric-card"><div class="metric-value">${d.employment}%</div><div class="metric-label">Employment</div></div>`:""}
+        </div>`;
+      }
     }
+
     return html || '<p class="text-muted">No results data for this school type.</p>';
   }
 
@@ -522,6 +595,35 @@ const SchoolsPage = (() => {
         <div class="metric-label">Status ${a.year?`(${a.year})`:""}</div>
       </div>
     </div>`;
+
+    // Catchment Area Section
+    if (a.catchment) {
+      const c = a.catchment;
+      html += `<h4 style="margin:20px 0 12px;font-size:.85rem;font-weight:700;color:var(--gray-600)">Catchment Area</h4>
+      <div class="metric-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="metric-card"><div class="metric-value">${c.officialRadius?.toFixed(1) || "-"} ${c.unit || "km"}</div><div class="metric-label">Official Catchment Radius</div></div>
+        <div class="metric-card"><div class="metric-value ${c.effectiveRadius < c.officialRadius * 0.5 ? 'text-danger' : ''}">${c.effectiveRadius?.toFixed(2) || "-"} ${c.unit || "km"}</div><div class="metric-label">Last Admitted Distance</div></div>
+      </div>`;
+      if (c.history) {
+        html += `<h5 style="margin:16px 0 8px;font-size:.8rem;font-weight:600;color:var(--gray-500)">Catchment Distance History</h5>`;
+        const years = Object.keys(c.history).sort().reverse();
+        const maxDist = Math.max(...Object.values(c.history), 1);
+        html += years.map(year => `<div class="progress-bar-wrap">
+          <div class="progress-label"><span>${year}</span><span>${c.history[year]?.toFixed(2)} ${c.unit || "km"}</span></div>
+          <div class="progress-track"><div class="progress-fill orange" style="width:${(c.history[year]/maxDist)*100}%"></div></div>
+        </div>`).join("");
+      }
+    }
+
+    // Admission Criteria Section
+    if (a.criteria && a.criteria.length) {
+      html += `<h4 style="margin:20px 0 12px;font-size:.85rem;font-weight:700;color:var(--gray-600)">Admission Criteria (Priority Order)</h4>
+      <table class="info-table">
+        ${a.criteria.map(cr => `<tr><td style="width:40px;text-align:center;font-weight:700;color:var(--primary)">${cr.priority}</td><td><strong>${esc(cr.criterion)}</strong><br><span style="font-size:.75rem;color:var(--gray-500)">${esc(cr.description)}</span></td></tr>`).join("")}
+      </table>`;
+    }
+
+    // Application Preferences
     if (a.applications) {
       html += `<h4 style="margin:20px 0 12px;font-size:.85rem;font-weight:700;color:var(--gray-600)">Application Preferences</h4>`;
       const prefs = [["1st Choice", a.applications.first], ["2nd Choice", a.applications.second], ["3rd Choice", a.applications.third]];
@@ -531,9 +633,28 @@ const SchoolsPage = (() => {
         <div class="progress-track"><div class="progress-fill blue" style="width:${(val/maxPref)*100}%"></div></div>
       </div>`).join("");
     }
-    if (a.lastDistanceOffered) {
-      html += `<p style="margin-top:14px;font-size:.85rem;color:var(--gray-600)"><strong>Last distance offered:</strong> ${a.lastDistanceOffered} km</p>`;
+
+    // Appeals
+    if (a.appeals) {
+      html += `<div class="metric-grid" style="grid-template-columns:1fr 1fr;margin-top:16px;">
+        <div class="metric-card"><div class="metric-value">${a.appeals.lodged || 0}</div><div class="metric-label">Appeals Lodged</div></div>
+        <div class="metric-card"><div class="metric-value">${a.appeals.successful || 0}</div><div class="metric-label">Appeals Successful</div></div>
+      </div>`;
     }
+
+    // Open Days
+    if (a.openDays && a.openDays.length) {
+      html += `<h4 style="margin:20px 0 12px;font-size:.85rem;font-weight:700;color:var(--gray-600)">Open Days</h4>
+      <ul style="margin:0;padding-left:20px;font-size:.85rem;color:var(--gray-600)">
+        ${a.openDays.map(od => `<li>${esc(od.date)} at ${od.time} (${od.type})</li>`).join("")}
+      </ul>`;
+    }
+
+    // Application Deadline
+    if (a.applicationDeadline) {
+      html += `<p style="margin-top:14px;font-size:.85rem;color:var(--warning);font-weight:600"><strong>Application Deadline:</strong> ${esc(a.applicationDeadline)}</p>`;
+    }
+
     return html;
   }
 
