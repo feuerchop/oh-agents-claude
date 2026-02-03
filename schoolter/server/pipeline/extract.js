@@ -41,6 +41,7 @@ const DFE_STATS_API_BASE = "https://explore-education-statistics.service.gov.uk/
 const REQUEST_DELAY_MS = 200; // rate-limit between enrichment requests
 const REQUEST_TIMEOUT_MS = 10000;
 
+// All 33 London boroughs
 const LONDON_BOROUGHS = [
   "Barking and Dagenham", "Barnet", "Bexley", "Brent", "Bromley", "Camden",
   "City of London", "Croydon", "Ealing", "Enfield", "Greenwich", "Hackney",
@@ -50,6 +51,16 @@ const LONDON_BOROUGHS = [
   "Richmond upon Thames", "Southwark", "Sutton", "Tower Hamlets",
   "Waltham Forest", "Wandsworth", "Westminster",
 ];
+
+// Kent districts (including Medway unitary authority)
+const KENT_DISTRICTS = [
+  "Kent", "Ashford", "Canterbury", "Dartford", "Dover", "Folkestone and Hythe",
+  "Gravesham", "Maidstone", "Medway", "Sevenoaks", "Swale", "Thanet",
+  "Tonbridge and Malling", "Tunbridge Wells",
+];
+
+// Combined regions for filtering
+const TARGET_REGIONS = [...LONDON_BOROUGHS, ...KENT_DISTRICTS];
 
 // ── CLI Flags ───────────────────────────────────────────────
 const MODE_QUICK = process.argv.includes("--quick");
@@ -250,21 +261,21 @@ async function extractGIAS() {
 function transformGIAS(rows) {
   if (!rows) return null;
 
-  // Filter to London, open establishments only (EstablishmentStatus code 1 = Open)
-  const londonSchools = rows.filter((r) => {
+  // Filter to Greater London + Kent, open establishments only (EstablishmentStatus code 1 = Open)
+  const targetSchools = rows.filter((r) => {
     const la = r["LA (name)"] || r["LocalAuthority"] || "";
     const statusCode = r["EstablishmentStatus (code)"] || "";
-    const isLondon = LONDON_BOROUGHS.some(
+    const isTargetRegion = TARGET_REGIONS.some(
       (b) => la.toLowerCase().includes(b.toLowerCase())
     );
     // Status code 1 = open; if field missing, include by default
     const isOpen = statusCode === "" || statusCode === "1";
-    return isLondon && isOpen;
+    return isTargetRegion && isOpen;
   });
 
-  log(`Found ${londonSchools.length} open London schools in GIAS data`);
+  log(`Found ${targetSchools.length} open schools in Greater London + Kent`);
 
-  return londonSchools
+  return targetSchools
     .map((r, i) => {
       const phase = mapPhase(
         r["PhaseOfEducation (name)"] || r["TypeOfEstablishment (name)"] || ""
@@ -372,8 +383,9 @@ async function scrapeSchoolWebsite(url) {
 // Deterministic based on URN — same inputs produce same outputs
 // ══════════════════════════════════════════════════════════════
 
-// Borough affluence tiers affect metrics (higher = more affluent area)
+// Borough/district affluence tiers affect metrics (higher = more affluent area)
 const BOROUGH_TIER = {
+  // London boroughs
   "Kensington and Chelsea": 5, "Westminster": 5, "Richmond upon Thames": 5,
   "City of London": 5, "Camden": 4, "Hammersmith and Fulham": 4,
   "Kingston upon Thames": 4, "Wandsworth": 4, "Merton": 4,
@@ -384,6 +396,11 @@ const BOROUGH_TIER = {
   "Haringey": 2, "Waltham Forest": 2, "Croydon": 2, "Islington": 2,
   "Hackney": 2, "Tower Hamlets": 2, "Newham": 1,
   "Barking and Dagenham": 1,
+  // Kent districts
+  "Kent": 3, "Sevenoaks": 5, "Tunbridge Wells": 4, "Tonbridge and Malling": 4,
+  "Canterbury": 3, "Maidstone": 3, "Dartford": 3, "Gravesham": 2,
+  "Ashford": 3, "Dover": 2, "Folkestone and Hythe": 2, "Swale": 2,
+  "Thanet": 2, "Medway": 2,
 };
 
 // Ofsted rating multipliers for metric quality
@@ -665,14 +682,29 @@ function generateSyntheticDemographics(school, rng) {
         ? seededInt(rng, 3, 10)
         : seededInt(rng, 8, 22);
 
-  // Ethnicity distribution — based on borough demographics
+  // Ethnicity distribution — based on borough/district demographics
+  const isKent = KENT_DISTRICTS.some(d => school.borough.toLowerCase().includes(d.toLowerCase()));
   let ethnicities;
-  if (
+  if (isKent) {
+    // Kent is predominantly white with growing diversity in urban areas
+    const white = seededInt(rng, 70, 88);
+    const asian = seededInt(rng, 3, 12);
+    const black = seededInt(rng, 2, 8);
+    const mixed = seededInt(rng, 3, 8);
+    const other = 100 - white - asian - black - mixed;
+    ethnicities = {
+      white: white,
+      asian: asian,
+      black: black,
+      mixed: mixed,
+      other: Math.max(1, other),
+    };
+  } else if (
     ["Tower Hamlets", "Newham", "Brent", "Ealing", "Hounslow"].includes(
       school.borough
     )
   ) {
-    // High-diversity boroughs
+    // High-diversity London boroughs
     const asian = seededInt(rng, 25, 50);
     const black = seededInt(rng, 10, 25);
     const white = seededInt(rng, 15, 30);
@@ -690,7 +722,7 @@ function generateSyntheticDemographics(school, rng) {
       school.borough
     )
   ) {
-    // Less diverse outer boroughs
+    // Less diverse outer London boroughs
     const white = seededInt(rng, 55, 75);
     const asian = seededInt(rng, 5, 15);
     const black = seededInt(rng, 5, 15);
@@ -989,9 +1021,10 @@ function writeOutput(schools) {
   // Write JS file
   const outputPath = path.join(DATA_DIR, "schools.js");
   const header = `/**
- * London Schools Dataset — Auto-generated by pipeline
+ * Greater London & Kent Schools Dataset — Auto-generated by pipeline
  * Generated: ${new Date().toISOString()}
  * Total schools: ${cleanSchools.length}
+ * Coverage: All 33 London boroughs + Kent districts
  * Data sources: ${sourceCounts.real} real, ${sourceCounts.mixed} mixed, ${sourceCounts.synthetic} synthetic
  *
  * Schema includes: base GIAS fields + ofsted, performance, admissions,
@@ -1023,6 +1056,146 @@ if (typeof module !== 'undefined') {
 }
 
 // ══════════════════════════════════════════════════════════════
+// SYNTHETIC KENT SCHOOL GENERATOR
+// When GIAS data unavailable, generate realistic Kent schools
+// ══════════════════════════════════════════════════════════════
+function generateSyntheticKentSchools(startId) {
+  log("Generating synthetic Kent schools...");
+  const kentSchools = [];
+  const rng = seedRandom(999999); // Fixed seed for consistent generation
+
+  // Kent school name components
+  const prefixes = [
+    "St Mary's", "St Peter's", "St John's", "St Paul's", "Holy Trinity",
+    "King's", "Queen's", "Royal", "The", "", "",
+  ];
+  const bases = [
+    "Canterbury", "Dover", "Maidstone", "Tunbridge Wells", "Ashford", "Folkestone",
+    "Dartford", "Gravesend", "Sevenoaks", "Tonbridge", "Chatham", "Rochester",
+    "Gillingham", "Sittingbourne", "Faversham", "Margate", "Ramsgate", "Broadstairs",
+    "Whitstable", "Herne Bay", "Deal", "Sandwich", "Tenterden", "Cranbrook",
+    "Paddock Wood", "Edenbridge", "Westerham", "Snodland", "Aylesford", "Swanley",
+  ];
+  const suffixes = [
+    "Academy", "School", "Grammar School", "High School", "College",
+    "Primary School", "Junior School", "Infant School", "Community School",
+    "Church of England Primary", "Catholic Primary", "Free School",
+  ];
+
+  const kentDistricts = [
+    { name: "Canterbury", postcodePrefix: "CT", latBase: 51.28, lngBase: 1.08 },
+    { name: "Maidstone", postcodePrefix: "ME", latBase: 51.27, lngBase: 0.52 },
+    { name: "Ashford", postcodePrefix: "TN", latBase: 51.15, lngBase: 0.87 },
+    { name: "Dover", postcodePrefix: "CT", latBase: 51.13, lngBase: 1.31 },
+    { name: "Folkestone and Hythe", postcodePrefix: "CT", latBase: 51.08, lngBase: 1.17 },
+    { name: "Thanet", postcodePrefix: "CT", latBase: 51.36, lngBase: 1.38 },
+    { name: "Swale", postcodePrefix: "ME", latBase: 51.34, lngBase: 0.76 },
+    { name: "Dartford", postcodePrefix: "DA", latBase: 51.44, lngBase: 0.21 },
+    { name: "Gravesham", postcodePrefix: "DA", latBase: 51.44, lngBase: 0.37 },
+    { name: "Sevenoaks", postcodePrefix: "TN", latBase: 51.27, lngBase: 0.19 },
+    { name: "Tonbridge and Malling", postcodePrefix: "TN", latBase: 51.20, lngBase: 0.28 },
+    { name: "Tunbridge Wells", postcodePrefix: "TN", latBase: 51.13, lngBase: 0.26 },
+    { name: "Medway", postcodePrefix: "ME", latBase: 51.39, lngBase: 0.54 },
+  ];
+
+  const phases = ["Primary", "Secondary", "All-Through", "Nursery", "Special"];
+  const phaseWeights = [50, 30, 5, 10, 5]; // Weighted distribution
+
+  function weightedPick(items, weights) {
+    const total = weights.reduce((a, b) => a + b, 0);
+    let r = rng() * total;
+    for (let i = 0; i < items.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return items[i];
+    }
+    return items[0];
+  }
+
+  // Generate ~150 Kent schools
+  for (let i = 0; i < 150; i++) {
+    const district = seededPick(rng, kentDistricts);
+    const phase = weightedPick(phases, phaseWeights);
+    const isPrivate = rng() < 0.15; // 15% private schools in Kent
+
+    const prefix = seededPick(rng, prefixes);
+    const base = seededPick(rng, bases);
+    let suffix;
+    if (phase === "Primary") {
+      suffix = seededPick(rng, ["Primary School", "Junior School", "Church of England Primary", "Catholic Primary", "Infant School"]);
+    } else if (phase === "Secondary") {
+      suffix = seededPick(rng, ["Academy", "Grammar School", "High School", "College", "School"]);
+    } else if (phase === "Nursery") {
+      suffix = seededPick(rng, ["Nursery", "Pre-School", "Early Years Centre"]);
+    } else {
+      suffix = seededPick(rng, suffixes);
+    }
+
+    const name = [prefix, base, suffix].filter(Boolean).join(" ").replace(/\s+/g, " ");
+
+    const urn = 130000 + i;
+    const lat = district.latBase + (rng() - 0.5) * 0.15;
+    const lng = district.lngBase + (rng() - 0.5) * 0.2;
+    const postcodeNum = seededInt(rng, 1, 20);
+    const postcodeLetters = String.fromCharCode(65 + seededInt(rng, 0, 25)) + String.fromCharCode(65 + seededInt(rng, 0, 25));
+    const postcode = `${district.postcodePrefix}${postcodeNum} ${seededInt(rng, 1, 9)}${postcodeLetters}`;
+
+    let ageRange, hasSixthForm, pupils;
+    if (phase === "Primary") {
+      ageRange = rng() < 0.3 ? "4–11" : (rng() < 0.5 ? "5–11" : "4–7");
+      hasSixthForm = false;
+      pupils = seededInt(rng, 150, 450);
+    } else if (phase === "Secondary") {
+      hasSixthForm = rng() < 0.6;
+      ageRange = hasSixthForm ? "11–18" : "11–16";
+      pupils = seededInt(rng, 600, 1800);
+    } else if (phase === "Nursery") {
+      ageRange = "2–4";
+      hasSixthForm = false;
+      pupils = seededInt(rng, 30, 100);
+    } else if (phase === "All-Through") {
+      ageRange = "4–18";
+      hasSixthForm = true;
+      pupils = seededInt(rng, 800, 2000);
+    } else {
+      ageRange = "5–19";
+      hasSixthForm = false;
+      pupils = seededInt(rng, 50, 200);
+    }
+
+    const ofstedRatings = ["Outstanding", "Good", "Good", "Good", "Requires Improvement"];
+    const ofstedRating = isPrivate ? "N/A" : seededPick(rng, ofstedRatings);
+
+    const school = {
+      id: startId + i,
+      urn: String(urn),
+      name,
+      borough: district.name,
+      type: phase === "Primary" ? "Primary" : phase === "Secondary" ? "Secondary" : phase,
+      phase,
+      gender: rng() < 0.05 ? (rng() < 0.5 ? "Boys" : "Girls") : "Mixed",
+      religiousCharacter: seededPick(rng, ["None", "None", "None", "Church of England", "Roman Catholic", "None"]),
+      ofstedRating,
+      ageRange,
+      pupils,
+      address: `${seededInt(rng, 1, 200)} ${seededPick(rng, ["High Street", "School Lane", "Church Road", "Station Road", "Mill Lane", "The Green"])}, ${district.name}, Kent`,
+      postcode,
+      lat,
+      lng,
+      hasSixthForm,
+      fundingType: isPrivate ? "Independent" : seededPick(rng, ["Academy", "Maintained", "Free School"]),
+      sector: isPrivate ? "Private" : "State",
+      website: `https://www.${name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20)}.kent.sch.uk`,
+      region: "Kent",
+    };
+
+    kentSchools.push(school);
+  }
+
+  log(`Generated ${kentSchools.length} synthetic Kent schools`);
+  return kentSchools;
+}
+
+// ══════════════════════════════════════════════════════════════
 // MAIN
 // ══════════════════════════════════════════════════════════════
 async function main() {
@@ -1048,6 +1221,17 @@ async function main() {
         process.exit(1);
       }
       log(`Loaded ${schools.length} schools from static dataset`);
+
+      // Check if Kent schools are present; if not, generate them
+      const hasKent = schools.some(s => KENT_DISTRICTS.some(d =>
+        (s.borough || "").toLowerCase().includes(d.toLowerCase()) ||
+        (s.region || "").toLowerCase() === "kent"
+      ));
+      if (!hasKent) {
+        const kentSchools = generateSyntheticKentSchools(schools.length + 1);
+        schools = [...schools, ...kentSchools];
+        log(`Added ${kentSchools.length} Kent schools. Total: ${schools.length}`);
+      }
     }
 
     // Step 2: Enrich each school
