@@ -28,5 +28,10 @@ Thumbs.db
 # Logs
 *.log
 
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
 # Claude Code local settings (machine-specific, not shared)
 .claude/settings.local.json
