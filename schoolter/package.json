@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "node server/index.js",
     "start": "NODE_ENV=production node server/index.js",
-    "db:init": "node server/db/init.js"
+    "db:init": "node server/db/init.js",
+    "db:export": "node server/db/export.js",
+    "db:rebuild": "npm run db:init && npm run db:export",
+    "pipeline": "node server/pipeline/extract.js"
   },
   "keywords": ["london", "schools", "education", "saas"],
   "license": "MIT",
